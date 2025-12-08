@@ -53,35 +53,33 @@ steps:
       - '${_PROJECT_ID}'
 
   # 5) Apply manifests từ repo config cho ENV tương ứng
-  - name: 'gcr.io/cloud-builders/kubectl'
+  - name: 'gcr.io/cloud-builders/gcloud'
     id: 'Apply manifests'
+    entrypoint: 'bash'
     args:
-      - 'apply'
-      - '-f'
-      - '/workspace/config/k8s/hello-service/${_ENV}'
-      - '-n'
-      - '${_ENV}'
+      - '-c'
+      - |
+        kubectl apply -f /workspace/config/k8s/${_SERVICE_NAME}/${_ENV} -n ${_ENV}
 
   # 6) Set image đúng SHA cho deployment
-  - name: 'gcr.io/cloud-builders/kubectl'
+  - name: 'gcr.io/cloud-builders/gcloud'
     id: 'Set image'
+    entrypoint: 'bash'
     args:
-      - 'set'
-      - 'image'
-      - 'deployment/hello-service'
-      - 'hello-service=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:${SHORT_SHA}'
-      - '-n'
-      - '${_ENV}'
+      - '-c'
+      - |
+        kubectl set image deployment/${_SERVICE_NAME} \
+          ${_SERVICE_NAME}=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:${SHORT_SHA} \
+          -n ${_ENV}
 
   # 7) Wait for rollout
-  - name: 'gcr.io/cloud-builders/kubectl'
+  - name: 'gcr.io/cloud-builders/gcloud'
     id: 'Wait for rollout'
+    entrypoint: 'bash'
     args:
-      - 'rollout'
-      - 'status'
-      - 'deployment/hello-service'
-      - '-n'
-      - '${_ENV}'
+      - '-c'
+      - |
+        kubectl rollout status deployment/${_SERVICE_NAME} -n ${_ENV}
 
 images:
   - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:${SHORT_SHA}'
