@@ -1,0 +1,88 @@
+substitutions:
+  _ENV: 'dev'   # dev hoặc uat (override ở trigger)
+  _PROJECT_ID: 'project-neon-480615'
+  _REGION: 'asia-southeast1'
+  _REPO_NAME: 'project-neon-service-repo'
+  _SERVICE_NAME: 'project-neon-service'
+  _GKE_CLUSTER: 'project-neon-gke'
+  _GKE_ZONE: 'asia-southeast1-a'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  # 1) Clone repo configuration
+  - name: 'gcr.io/cloud-builders/git'
+    id: 'Clone config repo'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        git clone https://github.com/chuonghvz/project_neon_configuration /workspace/config
+
+  # 2) Build image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build image'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:latest'
+      - '.'
+
+  # 3) Push image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Push image'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}'
+      - '--all-tags'
+
+  # 4) Get GKE credentials
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'Get GKE credentials'
+    args:
+      - 'container'
+      - 'clusters'
+      - 'get-credentials'
+      - '${_GKE_CLUSTER}'
+      - '--zone'
+      - '${_GKE_ZONE}'
+      - '--project'
+      - '${_PROJECT_ID}'
+
+  # 5) Apply manifests từ repo config cho ENV tương ứng
+  - name: 'gcr.io/cloud-builders/kubectl'
+    id: 'Apply manifests'
+    args:
+      - 'apply'
+      - '-f'
+      - '/workspace/config/k8s/hello-service/${_ENV}'
+      - '-n'
+      - '${_ENV}'
+
+  # 6) Set image đúng SHA cho deployment
+  - name: 'gcr.io/cloud-builders/kubectl'
+    id: 'Set image'
+    args:
+      - 'set'
+      - 'image'
+      - 'deployment/hello-service'
+      - 'hello-service=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '-n'
+      - '${_ENV}'
+
+  # 7) Wait for rollout
+  - name: 'gcr.io/cloud-builders/kubectl'
+    id: 'Wait for rollout'
+    args:
+      - 'rollout'
+      - 'status'
+      - 'deployment/hello-service'
+      - '-n'
+      - '${_ENV}'
+
+images:
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:latest'
