@@ -47,8 +47,8 @@ steps:
       - 'clusters'
       - 'get-credentials'
       - '${_GKE_CLUSTER}'
-      - '--zone'
-      - '${_GKE_ZONE}'
+      - '--region'
+      - '${_REGION}'
       - '--project'
       - '${_PROJECT_ID}'
 
