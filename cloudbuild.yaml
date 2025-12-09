@@ -1,5 +1,5 @@
 substitutions:
-  _ENV: 'dev'   # hiện không còn dùng, nhưng giữ nếu sau này cần
+  _ENV: 'dev'
   _PROJECT_ID: 'project-neon-480615'
   _REGION: 'asia-southeast1'
   _REPO_NAME: 'project-neon-service-repo'

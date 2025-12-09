@@ -19,3 +19,7 @@ management:
         enabled: true
       readinessState:
         enabled: true
+
+constant:
+  app:
+    env: local
