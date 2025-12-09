@@ -50,9 +50,9 @@ steps:
         cd /workspace/config
 
         RELEASE_NAME="project-neon-$(date +%Y%m%d-%H%M%S)-$SHORT_SHA"
-        echo "Creating release ${RELEASE_NAME}"
+        echo "Creating release $RELEASE_NAME"
 
-        gcloud deploy releases create ${RELEASE_NAME} \
+        gcloud deploy releases create "$RELEASE_NAME" \
           --project=${_PROJECT_ID} \
           --region=${_REGION} \
           --delivery-pipeline=project-neon-service-pipeline \
