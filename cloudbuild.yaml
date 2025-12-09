@@ -6,6 +6,7 @@ substitutions:
   _SERVICE_NAME: 'project-neon-service'
   _GKE_CLUSTER: 'project-neon-gke'
   _GKE_ZONE: 'asia-southeast1-a'
+  _RELEASE_NAME: 'project-neon'
 
 options:
   logging: CLOUD_LOGGING_ONLY
