@@ -1,5 +1,5 @@
 substitutions:
-  _ENV: 'dev'   # dev hoặc uat (override ở trigger)
+  _ENV: 'dev'   # hiện không còn dùng, nhưng giữ nếu sau này cần
   _PROJECT_ID: 'project-neon-480615'
   _REGION: 'asia-southeast1'
   _REPO_NAME: 'project-neon-service-repo'
@@ -11,7 +11,7 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
-  # 1) Clone repo configuration
+  # 1) Clone repo configuration (cho Cloud Deploy dùng skaffold.yaml & manifests)
   - name: 'gcr.io/cloud-builders/git'
     id: 'Clone config repo'
     entrypoint: 'bash'
@@ -39,47 +39,25 @@ steps:
       - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}'
       - '--all-tags'
 
-  # 4) Get GKE credentials
-  - name: 'gcr.io/cloud-builders/gcloud'
-    id: 'Get GKE credentials'
-    args:
-      - 'container'
-      - 'clusters'
-      - 'get-credentials'
-      - '${_GKE_CLUSTER}'
-      - '--region'
-      - '${_REGION}'
-      - '--project'
-      - '${_PROJECT_ID}'
-
-  # 5) Apply manifests từ repo config cho ENV tương ứng
-  - name: 'gcr.io/cloud-builders/gcloud'
-    id: 'Apply manifests'
+  # 4) Create Cloud Deploy release (dev -> uat, uat requireApproval)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Create Cloud Deploy release'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        kubectl apply -f /workspace/config/k8s/${_SERVICE_NAME}/${_ENV} -n ${_ENV}
+        set -e
+        cd /workspace/config
 
-  # 6) Set image đúng SHA cho deployment
-  - name: 'gcr.io/cloud-builders/gcloud'
-    id: 'Set image'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        kubectl set image deployment/${_SERVICE_NAME} \
-          ${_SERVICE_NAME}=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:${SHORT_SHA} \
-          -n ${_ENV}
+        RELEASE_NAME="project-neon-$(date +%Y%m%d-%H%M%S)-$SHORT_SHA"
+        echo "Creating release ${RELEASE_NAME}"
 
-  # 7) Wait for rollout
-  - name: 'gcr.io/cloud-builders/gcloud'
-    id: 'Wait for rollout'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        kubectl rollout status deployment/${_SERVICE_NAME} -n ${_ENV}
+        gcloud deploy releases create ${RELEASE_NAME} \
+          --project=${_PROJECT_ID} \
+          --region=${_REGION} \
+          --delivery-pipeline=project-neon-service-pipeline \
+          --skaffold-file=skaffold.yaml \
+          --images=project-neon-service-image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:${SHORT_SHA}
 
 images:
   - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:${SHORT_SHA}'
