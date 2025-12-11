@@ -1,10 +1,10 @@
-package com.chuonghv.neno;
+package com.project.neon;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class ProjectNeonApplicationTests {
+class NeonApplicationTests {
 
 	@Test
 	void contextLoads() {
